@@ -78,9 +78,10 @@ Windows default-device changes. To see status while testing, run the normal
 PowerShell command instead.
 
 To open the normal visible pyo/WxPython control window, double-click
-`start_trutune_gui.vbs`. The visible launcher is also added as `TRUtune GUI` in
-the Start Menu during installation. Close the pyo window or use
-`stop_trutune.vbs` when finished.
+`start_trutune_gui.vbs`. It first shows dropdown menus for every available
+input and output device, then opens TRUtune with the selected pair. The visible
+launcher is also added as `TRUtune GUI` in the Start Menu during installation.
+Close the pyo window or use `stop_trutune.vbs` when finished.
 
 The background mode is transparent rather than concealed: the project files,
 Python process, launchers, and `trutune.log` remain visible. The log records

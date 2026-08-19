@@ -204,7 +204,8 @@ def run_supervisor(args: argparse.Namespace) -> None:
 			physical_output = args.output_device
 		route_system_audio(endpoint_id_for_pyo_output(physical_output))
 		args.output_device = physical_output
-		args.input_device = cable_input_for_output(physical_output)
+		if args.input_device is None:
+			args.input_device = cable_input_for_output(physical_output)
 		automatic_output = False
 		route_active = True
 		report("System audio routed through VB-CABLE.")
@@ -212,7 +213,11 @@ def run_supervisor(args: argparse.Namespace) -> None:
 		while True:
 			_, default_output = default_device_indices()
 			output_device = default_output if automatic_output else args.output_device
-			input_device = cable_input_for_output(output_device)
+			input_device = (
+				args.input_device
+				if args.input_device is not None
+				else cable_input_for_output(output_device)
+			)
 			selected_devices = (input_device, output_device)
 
 			if worker is None or worker.poll() is not None or selected_devices != current_devices:
