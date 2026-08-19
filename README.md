@@ -2,7 +2,9 @@
 
 MIT licensed. See [LICENSE](LICENSE).
 
-TRUtune is a small Windows-friendly pyo application that shifts live stereo microphone audio down by 0.3176665363 semitones, the equal-temperament difference between 440 Hz and 432 Hz.
+TRUtune is a small Windows-friendly pyo application that shifts live stereo
+system audio down by 0.3176665363 semitones, the equal-temperament difference
+between 440 Hz and 432 Hz. With VB-CABLE installed, routing is automatic.
 
 ## Setup
 
@@ -49,6 +51,11 @@ is reopened for the new audio worker after these changes.
 Keep Windows' desired playback device selected as the system default. TRUtune
 will follow that default automatically; explicit device IDs are only needed
 when you want to override the automatic behavior.
+
+When VB-CABLE is installed, TRUtune automatically routes Windows playback into
+VB-CABLE, processes `CABLE Output`, and restores the previous Windows playback
+device when stopped. Use `--microphone` to keep the original microphone-input
+mode instead.
 
 Choose devices from the list when needed:
 

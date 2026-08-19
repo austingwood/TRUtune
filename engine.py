@@ -25,6 +25,7 @@ from pyo import (
 	pa_get_devices_infos,
 	pa_list_devices,
 )
+from audio_routing import pyo_device_index, restore_system_audio, route_system_audio
 
 
 DEFAULT_SEMITONE_SHIFT = -0.3176665363
@@ -92,11 +93,17 @@ def create_parser() -> argparse.ArgumentParser:
 		help="Run silently without a GUI or console window.",
 	)
 	parser.add_argument(
+		"--microphone",
+		action="store_true",
+		help="Use the physical microphone instead of automatic VB-CABLE system audio.",
+	)
+	parser.add_argument(
 		"--poll-interval",
 		type=float,
 		default=2.0,
 		help="Seconds between automatic device checks (default: %(default)s).",
 	)
+	parser.add_argument("--restore-audio", action="store_true", help=argparse.SUPPRESS)
 	parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
 	return parser
 
@@ -111,11 +118,18 @@ def default_device_indices() -> tuple[int, int]:
 		pass
 
 	devices = pa_get_devices_infos()
-	input_devices = [index for index, info in devices.items() if "Input" in info["name"]]
-	output_devices = [index for index, info in devices.items() if "Output" in info["name"]]
+	if isinstance(devices, tuple):
+		input_devices, output_devices = devices
+	else:
+		input_devices = {
+			index: info for index, info in devices.items() if "Input" in info["name"]
+		}
+		output_devices = {
+			index: info for index, info in devices.items() if "Output" in info["name"]
+		}
 	if not input_devices or not output_devices:
 		raise RuntimeError("No usable input and output devices were found")
-	return input_devices[0], output_devices[0]
+	return next(iter(input_devices)), next(iter(output_devices))
 
 
 def worker_args(args: argparse.Namespace, input_device: int, output_device: int) -> list[str]:
@@ -186,8 +200,19 @@ def run_supervisor(args: argparse.Namespace) -> None:
 	worker: subprocess.Popen[bytes] | None = None
 	automatic_input = args.input_device is None
 	automatic_output = args.output_device is None
+	route_active = False
 
 	try:
+		if not args.microphone and args.input_device is None:
+			_, physical_output = default_device_indices()
+			route_system_audio()
+			args.input_device = pyo_device_index("CABLE Output (VB-Audio Virtual Cable)", True)
+			args.output_device = physical_output
+			automatic_input = False
+			automatic_output = False
+			route_active = True
+			report("System audio routed through VB-CABLE.")
+
 		while True:
 			default_input, default_output = default_device_indices()
 			input_device = default_input if automatic_input else args.input_device
@@ -215,6 +240,9 @@ def run_supervisor(args: argparse.Namespace) -> None:
 	finally:
 		if worker is not None and worker.poll() is None:
 			stop_worker(worker)
+		if route_active:
+			restore_system_audio()
+			report("Restored the previous Windows playback device.")
 
 
 def run(args: argparse.Namespace) -> None:
@@ -223,6 +251,9 @@ def run(args: argparse.Namespace) -> None:
 	configure_logging(args.background)
 	if args.list_devices:
 		pa_list_devices()
+		return
+	if getattr(args, "restore_audio", False):
+		restore_system_audio()
 		return
 	if args.window_size <= 0 or args.window_size > 1:
 		raise ValueError("--window-size must be greater than 0 and no more than 1 second")

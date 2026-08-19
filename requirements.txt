@@ -1,2 +1,4 @@
 pyo==1.0.5
 wxPython==4.3.1
+pycaw==20251023
+comtypes==1.4.16
