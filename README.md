@@ -54,8 +54,7 @@ when you want to override the automatic behavior.
 
 When VB-CABLE is installed, TRUtune automatically routes Windows playback into
 VB-CABLE, processes `CABLE Output`, and restores the previous Windows playback
-device when stopped. Use `--microphone` to keep the original microphone-input
-mode instead.
+device when stopped.
 
 Choose devices from the list when needed:
 
@@ -102,4 +101,4 @@ Use `stop_trutune.vbs` from the same USB drive to stop the background process.
 
 ## Audio safety
 
-Use headphones to avoid feedback. Begin with a low monitoring volume, especially when the microphone and speakers are in the same room.
+Use headphones to avoid feedback. Begin with a low monitoring volume.

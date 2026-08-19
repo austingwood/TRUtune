@@ -94,12 +94,41 @@ def _current_default_output_id() -> str:
     return AudioUtilities.GetSpeakers().id
 
 
-def route_system_audio() -> dict[str, str]:
+def endpoint_id_for_pyo_output(output_device: int) -> str:
+    from pyo import pa_get_devices_infos
+
+    devices = pa_get_devices_infos()
+    output_devices = devices[1] if isinstance(devices, tuple) else devices
+    info = output_devices.get(output_device)
+    if info is None:
+        raise RuntimeError(f"Output device {output_device} is no longer available")
+    name = info["name"].strip()
+    for device in _devices():
+        if device.FriendlyName.startswith(name) and "CABLE Input" not in device.FriendlyName:
+            return device.id
+    active_physical = [
+        device
+        for device in _devices()
+        if "CABLE" not in device.FriendlyName
+        and "Active" in str(getattr(device, "state", ""))
+    ]
+    if active_physical:
+        return active_physical[0].id
+    raise RuntimeError(f"Could not map pyo output device {output_device} to Windows audio")
+
+
+def route_system_audio(previous_output_id: str | None = None) -> dict[str, str]:
     if ROUTE_STATE_PATH.exists():
-        restore_system_audio()
+        state = json.loads(ROUTE_STATE_PATH.read_text(encoding="utf-8"))
+        if state.get("previous_output_id") and "CABLE Input" not in state["previous_output_id"]:
+            set_default_endpoint(state["previous_output_id"])
+        ROUTE_STATE_PATH.unlink(missing_ok=True)
     cable_input = _find_device(CABLE_INPUT_NAME)
     cable_output = _find_device(CABLE_OUTPUT_NAME)
-    previous_output_id = _current_default_output_id()
+    if previous_output_id is None:
+        previous_output_id = _current_default_output_id()
+    if "CABLE Input" in previous_output_id:
+        raise RuntimeError("Windows is already routed to VB-CABLE; select a physical output first")
     set_default_endpoint(cable_input.id)
     state = {
         "previous_output_id": previous_output_id,

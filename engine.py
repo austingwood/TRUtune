@@ -1,4 +1,4 @@
-"""Real-time microphone pitch shifting with pyo.
+"""Real-time system-audio pitch shifting with pyo.
 
 Run ``python engine.py --help`` for the available options.
 """
@@ -25,7 +25,12 @@ from pyo import (
 	pa_get_devices_infos,
 	pa_list_devices,
 )
-from audio_routing import cable_input_for_output, restore_system_audio, route_system_audio
+from audio_routing import (
+	cable_input_for_output,
+	endpoint_id_for_pyo_output,
+	restore_system_audio,
+	route_system_audio,
+)
 
 
 DEFAULT_SEMITONE_SHIFT = -0.3176665363
@@ -56,15 +61,11 @@ _background_mode = False
 def create_parser() -> argparse.ArgumentParser:
 	parser = argparse.ArgumentParser(description="Shift live stereo audio down to 432 Hz.")
 	parser.add_argument(
-		"--input-device",
-		type=int,
-		help="PortAudio input device index. The system default is used when omitted.",
-	)
-	parser.add_argument(
 		"--output-device",
 		type=int,
 		help="PortAudio output device index. The system default is used when omitted.",
 	)
+	parser.add_argument("--input-device", type=int, help=argparse.SUPPRESS)
 	parser.add_argument(
 		"--shift",
 		type=float,
@@ -91,11 +92,6 @@ def create_parser() -> argparse.ArgumentParser:
 		"--background",
 		action="store_true",
 		help="Run silently without a GUI or console window.",
-	)
-	parser.add_argument(
-		"--microphone",
-		action="store_true",
-		help="Use the physical microphone instead of automatic VB-CABLE system audio.",
 	)
 	parser.add_argument(
 		"--poll-interval",
@@ -198,25 +194,25 @@ def run_worker(args: argparse.Namespace) -> None:
 def run_supervisor(args: argparse.Namespace) -> None:
 	current_devices: tuple[int, int] | None = None
 	worker: subprocess.Popen[bytes] | None = None
-	automatic_input = args.input_device is None
 	automatic_output = args.output_device is None
 	route_active = False
 
 	try:
-		if not args.microphone and args.input_device is None:
+		if args.output_device is None:
 			_, physical_output = default_device_indices()
-			route_system_audio()
-			args.output_device = physical_output
-			args.input_device = cable_input_for_output(physical_output)
-			automatic_input = False
-			automatic_output = False
-			route_active = True
-			report("System audio routed through VB-CABLE.")
+		else:
+			physical_output = args.output_device
+		route_system_audio(endpoint_id_for_pyo_output(physical_output))
+		args.output_device = physical_output
+		args.input_device = cable_input_for_output(physical_output)
+		automatic_output = False
+		route_active = True
+		report("System audio routed through VB-CABLE.")
 
 		while True:
-			default_input, default_output = default_device_indices()
-			input_device = default_input if automatic_input else args.input_device
+			_, default_output = default_device_indices()
 			output_device = default_output if automatic_output else args.output_device
+			input_device = cable_input_for_output(output_device)
 			selected_devices = (input_device, output_device)
 
 			if worker is None or worker.poll() is not None or selected_devices != current_devices:
