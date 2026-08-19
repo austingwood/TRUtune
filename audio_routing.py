@@ -53,17 +53,35 @@ def _find_device(name: str) -> Any:
     raise RuntimeError(f"Audio device not found: {name}")
 
 
-def pyo_device_index(name: str, input_device: bool) -> int:
+def pyo_device_index(name: str, input_device: bool, host_api_index: int | None = None) -> int:
     from pyo import pa_get_devices_infos
 
     devices = pa_get_devices_infos()
     if isinstance(devices, tuple):
         devices = devices[0 if input_device else 1]
     for index, info in devices.items():
-        if info["name"].strip().startswith(name.split(" (", 1)[0]):
+        if (
+            info["name"].strip().startswith(name.split(" (", 1)[0])
+            and (host_api_index is None or info["host api index"] == host_api_index)
+        ):
             return index
     direction = "input" if input_device else "output"
     raise RuntimeError(f"Could not map VB-CABLE {direction} device to a pyo device")
+
+
+def cable_input_for_output(output_device: int) -> int:
+    from pyo import pa_get_devices_infos
+
+    devices = pa_get_devices_infos()
+    input_devices, output_devices = devices if isinstance(devices, tuple) else ({}, devices)
+    output_info = output_devices.get(output_device)
+    if output_info is None:
+        raise RuntimeError(f"Output device {output_device} is no longer available")
+    return pyo_device_index(
+        CABLE_OUTPUT_NAME,
+        input_device=True,
+        host_api_index=output_info["host api index"],
+    )
 
 
 def set_default_endpoint(device_id: str) -> None:

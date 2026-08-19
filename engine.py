@@ -25,7 +25,7 @@ from pyo import (
 	pa_get_devices_infos,
 	pa_list_devices,
 )
-from audio_routing import pyo_device_index, restore_system_audio, route_system_audio
+from audio_routing import cable_input_for_output, restore_system_audio, route_system_audio
 
 
 DEFAULT_SEMITONE_SHIFT = -0.3176665363
@@ -206,8 +206,8 @@ def run_supervisor(args: argparse.Namespace) -> None:
 		if not args.microphone and args.input_device is None:
 			_, physical_output = default_device_indices()
 			route_system_audio()
-			args.input_device = pyo_device_index("CABLE Output (VB-Audio Virtual Cable)", True)
 			args.output_device = physical_output
+			args.input_device = cable_input_for_output(physical_output)
 			automatic_input = False
 			automatic_output = False
 			route_active = True
